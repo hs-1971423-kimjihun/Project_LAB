@@ -39,7 +39,7 @@ export const NavbarWrapper = ({ children }: Props) => {
         </NavbarContent>
         <NavbarContent
           justify="end"
-          className="w-fit data-[justify=end]:flex-grow-0"
+          className="w-fit data-[justify=end]:grow-0"
         >
           <div className="flex items-center gap-2 max-md:hidden">
             <FeedbackIcon />
