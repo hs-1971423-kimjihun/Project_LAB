@@ -1,5 +1,10 @@
 # NextJS and HeroUI Dashboard Template Starter
 
+> ⚠️ **Beta Feature Notice**
+>
+> This branch provides support for Tailwind CSS v4 and utilizes unreleased HeroUI packages (see [HeroUI PR #4656](https://github.com/heroui-inc/heroui/pull/4656)). These changes are experimental and may be subject to breaking changes until the packages are officially released. Use this branch at your own risk.
+
+
 You can deploy directly to Vercel: [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/import/project?template=https://github.com/Siumauricio/nextui-dashboard-template)
 
 **V1 Version (Stitches):** [https://v1-nextui-dashboard-template.vercel.app/](https://v1-nextui-dashboard-template.vercel.app/)  
