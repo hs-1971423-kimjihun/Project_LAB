@@ -2,7 +2,7 @@
 
 > ⚠️ **Beta Feature Notice**
 >
-> This branch provides support for Tailwind CSS v4 and utilizes unreleased HeroUI packages (see [HeroUI PR #4656](https://github.com/heroui-inc/heroui/pull/4656)). These changes are experimental and may be subject to breaking changes until the packages are officially released. Use this branch at your own risk.
+> This branch provides support for Tailwind CSS v4 and utilizes unreleased HeroUI packages (see [HeroUI PR #4656](https://github.com/heroui-inc/heroui/pull/4656)). These changes are experimental and may be subject to breaking changes until the packages are officially released. Use this branch at your own risk. Make sure to use the `--legacy-peer-deps` flag when running `npm install`
 
 
 You can deploy directly to Vercel: [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/import/project?template=https://github.com/Siumauricio/nextui-dashboard-template)
@@ -58,7 +58,7 @@ To improve this template, please create a pull request or open an issue on our [
 ### Install Dependencies
 
 ```bash
-npm install
+npm install --legacy-peer-deps
 ```
 
 ### Start the Development Server
