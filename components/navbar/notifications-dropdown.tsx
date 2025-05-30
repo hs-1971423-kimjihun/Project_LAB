@@ -25,9 +25,9 @@ export const NotificationsDropdown = () => {
               title: "text-base font-semibold",
             }}
             key="1"
-            description="Sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim."
+            description="DB연결, AI연동 진행 예정"
           >
-            📣 Edit your information
+            📣 아직 개발중인 페이지 입니다.
           </DropdownItem>
           <DropdownItem
             key="2"
@@ -35,9 +35,9 @@ export const NotificationsDropdown = () => {
               base: "py-2",
               title: "text-base font-semibold",
             }}
-            description="Sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim."
+            description="테스트 아이템템"
           >
-            🚀 Say goodbye to paper receipts!
+            🚀 테스트!
           </DropdownItem>
           <DropdownItem
             key="3"
@@ -45,9 +45,9 @@ export const NotificationsDropdown = () => {
               base: "py-2",
               title: "text-base font-semibold",
             }}
-            description="Sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim."
+            description="테스트아이템 2"
           >
-            📣 Edit your information
+            📣 테스트!
           </DropdownItem>
         </DropdownSection>
       </DropdownMenu>

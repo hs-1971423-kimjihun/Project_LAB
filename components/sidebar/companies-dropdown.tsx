@@ -19,8 +19,8 @@ interface Company {
 
 export const CompaniesDropdown = () => {
   const [company, setCompany] = useState<Company>({
-    name: "Acme Co.",
-    location: "Palo Alto, CA",
+    name: "Puzzlesystems",
+    location: "Cloud Data Center",
     logo: <AcmeIcon />,
   });
   return (
@@ -47,29 +47,29 @@ export const CompaniesDropdown = () => {
         onAction={(e) => {
           if (e === "1") {
             setCompany({
-              name: "Facebook",
-              location: "San Fransico, CA",
+              name: "Puzzlesystems",
+              location: "Cloud Data Center",
               logo: <AcmeIcon />,
             });
           }
           if (e === "2") {
             setCompany({
-              name: "Instagram",
-              location: "Austin, Tx",
+              name: "Puzzlesystems",
+              location: "Cloud Platform",
               logo: <AcmeLogo />,
             });
           }
           if (e === "3") {
             setCompany({
-              name: "Twitter",
-              location: "Brooklyn, NY",
+              name: "Puzzlesystems",
+              location: "Research Center",
               logo: <AcmeIcon />,
             });
           }
           if (e === "4") {
             setCompany({
-              name: "Acme Co.",
-              location: "Palo Alto, CA",
+              name: "Puzzlesystems",
+              location: "Management Team",
               logo: <AcmeIcon />,
             });
           }
@@ -80,46 +80,46 @@ export const CompaniesDropdown = () => {
           <DropdownItem
             key="1"
             startContent={<AcmeIcon />}
-            description="San Fransico, CA"
+            description="Cloud Data Center"
             classNames={{
               base: "py-4",
               title: "text-base font-semibold",
             }}
           >
-            Facebook
+            Puzzlesystems
           </DropdownItem>
           <DropdownItem
             key="2"
             startContent={<AcmeLogo />}
-            description="Austin, Tx"
+            description="Cloud Platform"
             classNames={{
               base: "py-4",
               title: "text-base font-semibold",
             }}
           >
-            Instagram
+            Puzzlesystems
           </DropdownItem>
           <DropdownItem
             key="3"
             startContent={<AcmeIcon />}
-            description="Brooklyn, NY"
+            description="Research Center"
             classNames={{
               base: "py-4",
               title: "text-base font-semibold",
             }}
           >
-            Twitter
+            Puzzlesystems
           </DropdownItem>
           <DropdownItem
             key="4"
             startContent={<AcmeIcon />}
-            description="Palo Alto, CA"
+            description="Management Team"
             classNames={{
               base: "py-4",
               title: "text-base font-semibold",
             }}
           >
-            Acme Co.
+            Puzzlesystems
           </DropdownItem>
         </DropdownSection>
       </DropdownMenu>

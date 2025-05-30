@@ -2,6 +2,7 @@ import { Input, Link, Navbar, NavbarContent } from "@heroui/react";
 import React from "react";
 import { FeedbackIcon } from "../icons/navbar/feedback-icon";
 import { GithubIcon } from "../icons/navbar/github-icon";
+import { HomeIcon } from "../icons/navbar/home-icon";
 import { SupportIcon } from "../icons/navbar/support-icon";
 import { SearchIcon } from "../icons/searchicon";
 import { BurguerButton } from "./burguer-button";
@@ -43,20 +44,20 @@ export const NavbarWrapper = ({ children }: Props) => {
         >
           <div className="flex items-center gap-2 max-md:hidden">
             <FeedbackIcon />
-            <span>Feedback?</span>
+            <span>Work in progress</span>
           </div>
 
           <NotificationsDropdown />
 
-          <div className="max-md:hidden">
+          {/* <div className="max-md:hidden">
             <SupportIcon />
-          </div>
+          </div> */}
 
           <Link
-            href="https://github.com/Siumauricio/nextui-dashboard-template"
+            href="https://portal.puzzlesystems.co.kr/home"
             target={"_blank"}
           >
-            <GithubIcon />
+            <HomeIcon />
           </Link>
           <NavbarContent>
             <UserDropdown />

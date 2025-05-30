@@ -4,7 +4,7 @@ import { useSidebarContext } from "../layout/layout-context";
 import clsx from "clsx";
 
 interface Props {
-  title: string;
+  title: string | React.ReactNode; // 이 부분을 수정
   icon: React.ReactNode;
   isActive?: boolean;
   href?: string;

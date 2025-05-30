@@ -1,6 +1,6 @@
 import React from "react";
 import { Sidebar } from "./sidebar.styles";
-import { Avatar, Tooltip } from "@heroui/react";
+import { Avatar, Tooltip, Chip } from "@heroui/react";
 import { CompaniesDropdown } from "./companies-dropdown";
 import { HomeIcon } from "../icons/sidebar/home-icon";
 import { PaymentsIcon } from "../icons/sidebar/payments-icon";
@@ -53,33 +53,49 @@ export const SidebarWrapper = () => {
                 href="accounts"
               />
               <SidebarItem
-                isActive={pathname === "/payments"}
-                title="Payments"
+                isActive={pathname === "/inspection"}
+                title="Inspection list"
                 icon={<PaymentsIcon />}
+                href="inspection"
               />
               <CollapseItems
                 icon={<BalanceIcon />}
-                items={["Banks Accounts", "Credit Cards", "Loans"]}
+                items={["test1", "test2", "test3"]}
                 title="Balances"
               />
               <SidebarItem
-                isActive={pathname === "/customers"}
-                title="Customers"
+                isActive={pathname === "/remote"}
+                title="원격제어"
                 icon={<CustomersIcon />}
+                href="remote"
               />
               <SidebarItem
                 isActive={pathname === "/products"}
-                title="Products"
+                title="Zoning"
                 icon={<ProductsIcon />}
               />
               <SidebarItem
                 isActive={pathname === "/reports"}
-                title="Reports"
+                title={
+                      <div className="flex items-center gap-2">
+                        AI_Report
+                        <Chip
+                          classNames={{
+                            base: "bg-gradient-to-br from-indigo-500 to-pink-500 border-small border-white/50 shadow-pink-500/30",
+                            content: "drop-shadow shadow-black text-white",
+                          }}
+                          variant="shadow"
+                          size="sm"
+                        >
+                          Live
+                        </Chip>
+                      </div>
+                    }
                 icon={<ReportsIcon />}
               />
             </SidebarMenu>
 
-            <SidebarMenu title="General">
+            {/* <SidebarMenu title="General">
               <SidebarItem
                 isActive={pathname === "/developers"}
                 title="Developers"
@@ -95,15 +111,15 @@ export const SidebarWrapper = () => {
                 title="Settings"
                 icon={<SettingsIcon />}
               />
-            </SidebarMenu>
+            </SidebarMenu> */}
 
-            <SidebarMenu title="Updates">
+            {/* <SidebarMenu title="Updates">
               <SidebarItem
                 isActive={pathname === "/changelog"}
                 title="Changelog"
                 icon={<ChangeLogIcon />}
               />
-            </SidebarMenu>
+            </SidebarMenu> */}
           </div>
           <div className={Sidebar.Footer()}>
             <Tooltip content={"Settings"} color="primary">
@@ -118,7 +134,7 @@ export const SidebarWrapper = () => {
             </Tooltip>
             <Tooltip content={"Profile"} color="primary">
               <Avatar
-                src="https://i.pravatar.cc/150?u=a042581f4e29026704d"
+                src="https://www.puzzlesystems.co.kr/wp-content/themes/puzzle/images/favicon.png"
                 size="sm"
               />
             </Tooltip>
