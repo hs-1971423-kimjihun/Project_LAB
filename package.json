@@ -93,6 +93,7 @@
     "@heroui/use-theme": "https://pkg.pr.new/@heroui/use-theme@63afa9a",
     "@heroui/use-update-effect": "https://pkg.pr.new/@heroui/use-update-effect@63afa9a",
     "@heroui/user": "https://pkg.pr.new/@heroui/user@63afa9a",
+    "@xterm/xterm": "^5.5.0",
     "apexcharts": "^4.5.0",
     "clsx": "^2.1.1",
     "framer-motion": "^12.4.7",
@@ -103,6 +104,7 @@
     "react-apexcharts": "^1.7.0",
     "react-dom": "19.0.0",
     "react-leaflet": "^5.0.0",
+    "xterm-addon-fit": "^0.8.0",
     "yup": "^1.6.1"
   },
   "devDependencies": {
