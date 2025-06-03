@@ -41,17 +41,17 @@ export const Content = () => (
       </div>
 
       {/* Left Section */}
-      <div className="mt-4 gap-2 flex flex-col xl:max-w-md w-full">
+      {/* <div className="mt-4 gap-2 flex flex-col xl:max-w-md w-full">
         <h3 className="text-xl font-semibold">리모트콜 사용 현황</h3>
         <div className="flex flex-col justify-center gap-4 flex-wrap md:flex-nowrap md:flex-col">
           <CardAgents />
           <CardTransactions />
         </div>
-      </div>
+      </div> */}
     </div>
 
     {/* Table Latest Users */}
-    <div className="flex flex-col justify-center w-full py-5 px-4 lg:px-0  max-w-[90rem] mx-auto gap-3">
+    {/* <div className="flex flex-col justify-center w-full py-5 px-4 lg:px-0  max-w-[90rem] mx-auto gap-3">
       <div className="flex  flex-wrap justify-between">
         <h3 className="text-center text-xl font-semibold">Latest Users</h3>
         <Link
@@ -64,6 +64,6 @@ export const Content = () => (
         </Link>
       </div>
       <TableWrapper />
-    </div>
+    </div> */}
   </div>
 );
