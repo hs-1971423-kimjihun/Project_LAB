@@ -105,7 +105,7 @@ const XTerminalModal: React.FC<XTerminalModalProps> = ({ device, isOpen, onClose
 
       // --- 실제 WebSocket 연결 로직 ---
       // FastAPI 서버 주소와 포트를 확인하세요 (예: ws://localhost:8000)
-      const socketUrl = `ws://192.168.0.131:8000/ws/${device.id}`;
+      const socketUrl = `ws://localhost:8000/ws/${device.id}`;
       ws.current = new WebSocket(socketUrl);
 
       ws.current.onopen = () => {
