@@ -1,61 +1,12 @@
-# NextJS and HeroUI Dashboard Template Starter
-
-> ⚠️ **Beta Feature Notice**
->
-> This branch provides support for Tailwind CSS v4 and utilizes unreleased HeroUI packages (see [HeroUI PR #4656](https://github.com/heroui-inc/heroui/pull/4656)). These changes are experimental and may be subject to breaking changes until the packages are officially released. Use this branch at your own risk. Make sure to use the `--legacy-peer-deps` flag when running `npm install`
+# 프로젝트 LAP
 
 
-You can deploy directly to Vercel: [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/import/project?template=https://github.com/Siumauricio/nextui-dashboard-template)
-
-**V1 Version (Stitches):** [https://v1-nextui-dashboard-template.vercel.app/](https://v1-nextui-dashboard-template.vercel.app/)  
-**V1 Code:** [https://github.com/Siumauricio/nextui-dashboard-template/tree/v1](https://github.com/Siumauricio/nextui-dashboard-template/tree/v1)
-
-This is a template for NextJS and **HeroUI**.
-
-- **NextJS:** [https://nextjs.org/](https://nextjs.org/)
-- **HeroUI:** [https://heroui.com/](https://heroui.com/) (or check out the [HeroUI GitHub repository](https://github.com/heroui-inc/heroui) for more details)
-
-You can see the demo here: [https://nextui-dashboard-template.vercel.app/](https://nextui-dashboard-template.vercel.app/)  
-To improve this template, please create a pull request or open an issue on our [Issues](https://github.com/Siumauricio/nextui-dashboard-template/issues) or [Pull Requests](https://github.com/Siumauricio/nextui-dashboard-template/pulls) pages.
-
-### Dark Mode
-![Dashboard Dark Mode](./public/dark.png)
-
-### Light Mode
-![Dashboard Light Mode](./public/light.png)
-
-- Dark Mode Support
-- Fully Responsive
-- Home Page with Charts
-- Accounts Page
-- More pages coming soon...
-
-```
-├── components
-│   ├── accounts            # Accounts components
-│   ├── charts              # Charts components
-│   ├── breadcrumb          # Component for breadcrumbs
-│   ├── home                # Home page components
-│   ├── layout              # Layout components
-│   ├── navbar              # Navbar components
-│   ├── sidebar             # Sidebar components
-│   ├── table               # Table components
-│   ├── styles              # Reusable style components
-│   ├── icons               # Icon components
-│   ├── hooks               # Custom hooks
-├── app                     # Application routes and documentation
-│   ├── accounts            # Accounts route
-│       ├── page.tsx        # Accounts page
-│   ├── page.tsx            # Entry point for the app
-│   ├── layout.tsx          # Global layout for all pages
-│   ├── providers.tsx       # Theme provider setup
-│   ├── more...             # Additional pages coming soon
-└──
-```
 
 ## Getting Started
 
 ### Install Dependencies
+
+- pnpm으로 설치를 권장합니다.
 
 ```bash
 npm install --legacy-peer-deps
@@ -65,6 +16,20 @@ npm install --legacy-peer-deps
 
 ```bash
 npm run dev
+
+
+pnpm dev
 ```
 
 Then open [http://localhost:3000](http://localhost:3000) in your browser.
+
+
+
+## 백앤드 서버 실행
+
+```bash
+cd py_server
+
+
+python fast_temp.py
+```
