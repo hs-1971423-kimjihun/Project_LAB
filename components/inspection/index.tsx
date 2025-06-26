@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Button,
   Card,
@@ -28,7 +28,9 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
-  useDisclosure
+  useDisclosure,
+  DateRangePicker,
+  Textarea
 } from "@heroui/react";
 import { 
   MagnifyingGlassIcon,
@@ -36,72 +38,123 @@ import {
   BuildingOffice2Icon,
   PhoneIcon,
   EnvelopeIcon,
-  StarIcon,
+  CalendarIcon,
   EyeIcon,
   FunnelIcon,
-  XMarkIcon
+  XMarkIcon,
+  PlusIcon,
+  TrashIcon
 } from "@heroicons/react/24/outline";
+import {parseDate} from "@internationalized/date";
 
-// 실제 데이터 import
-import { companies, cities, Company } from "@/data/companyData";
 // 지도 컴포넌트 import
 import InteractiveMap from "./InteractiveMap";
 
-// 확장된 Company 인터페이스 (표시용 추가 정보)
-interface ExtendedCompany extends Company {
-  phone?: string;
-  email?: string;
-  category?: string;
-  rating?: number;
-  status?: "active" | "inactive" | "pending";
-  employees?: number;
-  description?: string;
+// API Base URL
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+// Types
+interface Equipment {
+  id: number;
+  company_id: number;
+  equipment_name: string;
+  model_name?: string;
+  serial_number?: string;
+  purchase_date?: string;
 }
 
-// 기본 데이터에 추가 정보를 생성하는 함수
-const generateExtendedData = (company: Company): ExtendedCompany => {
-  // 회사명이나 주소를 기반으로 카테고리 추정
-  const getCategory = (name: string) => {
-    if (name.includes("대학교") || name.includes("대학원")) return "교육기관";
-    if (name.includes("병원") || name.includes("의료")) return "의료기관";
-    if (name.includes("시청") || name.includes("공단") || name.includes("공사") || name.includes("위원회")) return "공공기관";
-    if (name.includes("금융") || name.includes("투자") || name.includes("카드") || name.includes("생명") || name.includes("해상")) return "금융업";
-    if (name.includes("건설") || name.includes("타이어") || name.includes("제약") || name.includes("화학")) return "제조업";
-    if (name.includes("통신") || name.includes("DS") || name.includes("정보")) return "IT/통신";
-    return "기타";
-  };
+interface Company {
+  company_id: number;
+  name: string;
+  address: string;
+  phone: string;
+  city?: string;
+  maintenance_start_date?: string;
+  maintenance_end_date?: string;
+  status: "active" | "inactive" | "pending";
+  equipment: Equipment[];
+}
 
-  // 간단한 해시 함수로 일관된 랜덤 값 생성
-  const hash = company.id.split('').reduce((a, b) => {
-    a = ((a << 5) - a) + b.charCodeAt(0);
-    return a & a;
-  }, 0);
+// 신규 등록을 위한 타입
+interface EquipmentCreate {
+  equipment_name: string;
+  model_name?: string;
+  serial_number?: string;
+  purchase_date?: string;
+}
 
-  const randomSeed = Math.abs(hash);
-  
-  return {
-    ...company,
-    phone: `0${2 + (randomSeed % 6)}-${String(randomSeed % 9000 + 1000)}-${String(randomSeed % 9000 + 1000)}`,
-    email: `contact@${company.name.toLowerCase().replace(/[^a-z0-9]/g, '')}.co.kr`,
-    category: getCategory(company.name),
-    rating: 3.5 + (randomSeed % 20) / 10, // 3.5 ~ 5.5
-    status: (["active", "active", "active", "pending", "inactive"] as const)[randomSeed % 5],
-    employees: 50 + (randomSeed % 300),
-    description: `${company.name}는 ${getCategory(company.name)} 분야의 전문 기업입니다.`
-  };
-};
+interface CompanyCreate {
+  name: string;
+  address: string;
+  phone: string;
+  maintenance_start_date?: string;
+  maintenance_end_date?: string;
+  equipment: EquipmentCreate[];
+}
 
 export const Inspection = () => {
   const [selectedCity, setSelectedCity] = useState<string>("");
-  const [selectedCompany, setSelectedCompany] = useState<ExtendedCompany | null>(null);
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [selectedStatus, setSelectedStatus] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [cities, setCities] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  
+  // 신규등록 모달 관련 상태
+  const { 
+    isOpen: isCreateOpen, 
+    onOpen: onCreateOpen, 
+    onOpenChange: onCreateOpenChange 
+  } = useDisclosure();
+  const [createLoading, setCreateLoading] = useState(false);
+  const [newCompany, setNewCompany] = useState<CompanyCreate>({
+    name: '',
+    address: '',
+    phone: '',
+    maintenance_start_date: undefined,
+    maintenance_end_date: undefined,
+    equipment: []
+  });
+  const [newEquipment, setNewEquipment] = useState<EquipmentCreate>({
+    equipment_name: '',
+    model_name: '',
+    serial_number: '',
+    purchase_date: undefined
+  });
 
-  // 확장 데이터 생성
-  const extendedCompanies = useMemo(() => 
-    companies.map(generateExtendedData), []);
+  // API에서 데이터 가져오기
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setDataLoading(true);
+        setError(null);
+
+        // 회사 데이터 가져오기
+        const companiesResponse = await fetch(`${API_BASE_URL}/api/companies`);
+        if (!companiesResponse.ok) throw new Error('Failed to fetch companies');
+        const companiesData = await companiesResponse.json();
+        setCompanies(companiesData);
+
+        // 도시 데이터 가져오기
+        const citiesResponse = await fetch(`${API_BASE_URL}/api/cities`);
+        if (!citiesResponse.ok) throw new Error('Failed to fetch cities');
+        const citiesData = await citiesResponse.json();
+        setCities(citiesData);
+
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+        console.error('Error fetching data:', err);
+      } finally {
+        setDataLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const handleCitySelect = async (city: string) => {
     setIsLoading(true);
@@ -113,18 +166,13 @@ export const Inspection = () => {
     setIsLoading(false);
   };
 
-  const handleCompanySelect = (company: ExtendedCompany) => {
+  const handleCompanySelect = (company: Company) => {
     setSelectedCompany(company);
     onOpen(); // 모달 열기
   };
 
-  const categories = useMemo(() => {
-    const categorySet = new Set(extendedCompanies.map(company => company.category));
-    return Array.from(categorySet);
-  }, [extendedCompanies]);
-
   const filteredCompanies = useMemo(() => {
-    let filtered = extendedCompanies;
+    let filtered = companies;
     
     if (selectedCity) {
       filtered = filtered.filter(company => company.city === selectedCity);
@@ -137,12 +185,12 @@ export const Inspection = () => {
       );
     }
     
-    if (selectedCategory) {
-      filtered = filtered.filter(company => company.category === selectedCategory);
+    if (selectedStatus) {
+      filtered = filtered.filter(company => company.status === selectedStatus);
     }
     
     return filtered;
-  }, [extendedCompanies, selectedCity, searchQuery, selectedCategory]);
+  }, [companies, selectedCity, searchQuery, selectedStatus]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -155,37 +203,124 @@ export const Inspection = () => {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case "active": return "유지보수";
-      case "pending": return "중단";
+      case "active": return "유지보수 중";
+      case "pending": return "예정";
       case "inactive": return "종료";
       default: return "알 수 없음";
     }
   };
 
-  const renderStars = (rating: number) => {
-    return Array.from({ length: 5 }, (_, i) => (
-      <StarIcon
-        key={i}
-        className={`w-4 h-4 ${
-          i < Math.floor(rating) ? "text-yellow-400 fill-current" : "text-gray-300"
-        }`}
-      />
-    ));
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString('ko-KR');
   };
+
+  // 신규 회사 등록
+  const handleCreateCompany = async () => {
+    try {
+      setCreateLoading(true);
+      
+      const response = await fetch(`${API_BASE_URL}/api/companies`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newCompany),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to create company');
+      }
+      
+      const createdCompany = await response.json();
+      
+      // 목록 새로고침
+      const updatedCompaniesResponse = await fetch(`${API_BASE_URL}/api/companies`);
+      const updatedCompanies = await updatedCompaniesResponse.json();
+      setCompanies(updatedCompanies);
+      
+      // 상태 초기화
+      setNewCompany({
+        name: '',
+        address: '',
+        phone: '',
+        maintenance_start_date: undefined,
+        maintenance_end_date: undefined,
+        equipment: []
+      });
+      
+      onCreateOpenChange();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '등록 중 오류가 발생했습니다.');
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
+  // 장비 추가
+  const handleAddEquipment = () => {
+    if (!newEquipment.equipment_name) {
+      alert('장비명을 입력해주세요.');
+      return;
+    }
+    
+    setNewCompany(prev => ({
+      ...prev,
+      equipment: [...prev.equipment, { ...newEquipment }]
+    }));
+    
+    // 장비 입력 폼 초기화
+    setNewEquipment({
+      equipment_name: '',
+      model_name: '',
+      serial_number: '',
+      purchase_date: undefined
+    });
+  };
+
+  // 장비 삭제
+  const handleRemoveEquipment = (index: number) => {
+    setNewCompany(prev => ({
+      ...prev,
+      equipment: prev.equipment.filter((_, i) => i !== index)
+    }));
+  };
+
+  if (dataLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <Spinner size="lg" color="primary" />
+          <p className="mt-4 text-gray-600">데이터를 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardBody className="text-center">
+            <p className="text-red-600 font-semibold mb-2">오류가 발생했습니다</p>
+            <p className="text-gray-600">{error}</p>
+            <Button 
+              color="primary" 
+              className="mt-4"
+              onClick={() => window.location.reload()}
+            >
+              다시 시도
+            </Button>
+          </CardBody>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4 lg:p-8">
       <div className="max-w-7xl mx-auto">
-        
-        {/* 헤더 섹션 */}
-        {/* <Card className="mb-8 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-          <CardBody className="text-center py-8">
-            <h1 className="text-4xl font-bold mb-2">🏢 업체 정보 조회 시스템</h1>
-            <p className="text-blue-100 text-lg">
-              지역별 업체 정보를 검색하고 상세 정보를 확인하세요
-            </p>
-          </CardBody>
-        </Card> */}
 
         {/* 필터 및 검색 섹션 */}
         <Card className="mb-6 shadow-lg">
@@ -229,24 +364,22 @@ export const Inspection = () => {
                 color="primary"
               />
 
-              {/* 카테고리 필터 */}
+              {/* 상태 필터 */}
               <Select
-                label="업종 필터"
-                placeholder="업종을 선택하세요"
-                selectedKeys={selectedCategory ? [selectedCategory] : []}
+                label="상태 필터"
+                placeholder="상태를 선택하세요"
+                selectedKeys={selectedStatus ? [selectedStatus] : []}
                 onSelectionChange={(keys) => {
                   const selected = Array.from(keys)[0] as string;
-                  setSelectedCategory(selected || "");
+                  setSelectedStatus(selected || "");
                 }}
                 startContent={<BuildingOffice2Icon className="w-4 h-4" />}
                 variant="bordered"
                 color="primary"
               >
-                {categories.map((category) => (
-                  <SelectItem key={category || ""}>
-                    {category || ""}
-                  </SelectItem>
-                ))}
+                <SelectItem key="active">유지보수 중</SelectItem>
+                <SelectItem key="pending">예정</SelectItem>
+                <SelectItem key="inactive">종료</SelectItem>
               </Select>
             </div>
 
@@ -264,14 +397,14 @@ export const Inspection = () => {
                   도시: {selectedCity}
                 </Chip>
               )}
-              {selectedCategory && (
+              {selectedStatus && (
                 <Chip
-                  onClose={() => setSelectedCategory("")}
+                  onClose={() => setSelectedStatus("")}
                   variant="flat"
                   color="secondary"
                   startContent={<BuildingOffice2Icon className="w-3 h-3" />}
                 >
-                  업종: {selectedCategory}
+                  상태: {getStatusText(selectedStatus)}
                 </Chip>
               )}
               {searchQuery && (
@@ -295,16 +428,29 @@ export const Inspection = () => {
           <Card className="shadow-lg">
             <CardHeader className="border-b border-gray-200">
               <div className="flex justify-between items-center w-full">
-                <h2 className="text-xl font-semibold text-gray-800">
-                  업체 목록
-                </h2>
-                <Badge 
-                  content={filteredCompanies.length} 
-                  color="primary" 
-                  size="lg"
-                >
-                  <div className="w-8 h-8" />
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-semibold text-gray-800">
+                    업체 목록
+                  </h2>
+                  <Badge 
+                    content={filteredCompanies.length} 
+                    color="primary" 
+                    size="lg"
+                  >
+                    <div className="w-3 h-8" />
+                  </Badge>
+                </div>
+
+                <div className="flex items-center">
+                  <Button
+                    color="primary"
+                    size="sm"
+                    startContent={<PlusIcon className="w-4 h-4" />}
+                    onPress={onCreateOpen}
+                  >
+                    신규등록
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardBody className="p-0">
@@ -317,7 +463,7 @@ export const Inspection = () => {
               ) : filteredCompanies.length > 0 ? (
                 <div className="max-h-[600px] overflow-y-auto">
                   {filteredCompanies.map((company, index) => (
-                    <div key={company.id}>
+                    <div key={company.company_id}>
                       <div
                         className="p-4 hover:bg-gray-50 cursor-pointer transition-all duration-200 border-l-4 border-transparent hover:border-blue-500"
                         onClick={() => handleCompanySelect(company)}
@@ -331,9 +477,9 @@ export const Inspection = () => {
                               <Chip
                                 size="sm"
                                 variant="dot"
-                                color={getStatusColor(company.status || "")}
+                                color={getStatusColor(company.status)}
                               >
-                                {getStatusText(company.status || "")}
+                                {getStatusText(company.status)}
                               </Chip>
                             </div>
                             
@@ -343,11 +489,12 @@ export const Inspection = () => {
                             
                             <div className="flex items-center gap-4 text-xs text-gray-500">
                               <span>{company.phone}</span>
-                              <span>{company.category}</span>
-                              {/* <div className="flex items-center gap-1">
-                                {renderStars(company.rating || 0)}
-                                <span>{company.rating?.toFixed(1)}</span>
-                              </div> */}
+                              {company.maintenance_start_date && (
+                                <span className="flex items-center gap-1">
+                                  <CalendarIcon className="w-3 h-3" />
+                                  {formatDate(company.maintenance_start_date)}
+                                </span>
+                              )}
                             </div>
                           </div>
                           
@@ -457,60 +604,65 @@ export const Inspection = () => {
                               <PhoneIcon className="w-5 h-5 text-orange-600" />
                               <span>{selectedCompany.phone}</span>
                             </div>
-                            <div className="flex items-center gap-3">
-                              <EnvelopeIcon className="w-5 h-5 text-purple-600" />
-                              <span>{selectedCompany.email}</span>
+                          </div>
+                        </CardBody>
+                      </Card>
+
+                      {/* 유지보수 정보 */}
+                      <Card className="shadow-sm">
+                        <CardHeader>
+                          <h3 className="text-lg font-semibold">유지보수 정보</h3>
+                        </CardHeader>
+                        <CardBody>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-sm text-gray-600 mb-1">시작일</p>
+                              <p className="font-medium">
+                                {formatDate(selectedCompany.maintenance_start_date)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-gray-600 mb-1">종료일</p>
+                              <p className="font-medium">
+                                {formatDate(selectedCompany.maintenance_end_date)}
+                              </p>
                             </div>
                           </div>
                         </CardBody>
                       </Card>
 
-                      {/* 평가 및 통계
-                      <Card className="shadow-sm">
-                        <CardHeader>
-                          <h3 className="text-lg font-semibold">평가 및 통계</h3>
-                        </CardHeader>
-                        <CardBody>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <p className="text-sm text-gray-600 mb-1">평점</p>
-                              <div className="flex items-center gap-2">
-                                {renderStars(selectedCompany.rating || 0)}
-                                <span className="font-semibold">{selectedCompany.rating?.toFixed(1)}/5</span>
-                              </div>
-                            </div>
-                            <div>
-                              <p className="text-sm text-gray-600 mb-1">직원 수</p>
-                              <p className="font-semibold">{selectedCompany.employees}명</p>
-                            </div>
-                            <div>
-                              <p className="text-sm text-gray-600 mb-1">업종</p>
-                              <Chip size="sm" variant="flat" color="secondary">
-                                {selectedCompany.category}
-                              </Chip>
-                            </div>
-                            <div>
-                              <p className="text-sm text-gray-600 mb-1">상태</p>
-                              <Chip 
-                                size="sm" 
-                                variant="dot" 
-                                color={getStatusColor(selectedCompany.status || "")}
-                              >
-                                {getStatusText(selectedCompany.status || "")}
-                              </Chip>
-                            </div>
-                          </div>
-                        </CardBody>
-                      </Card> */}
-
-                      {/* 설명 */}
+                      {/* 관리 장비 */}
                       <Card className="shadow-sm">
                         <CardHeader>
                           <h3 className="text-lg font-semibold">관리 장비</h3>
                         </CardHeader>
                         <CardBody>
-                          {/* <p className="text-gray-700">{selectedCompany.description}</p> */}
-
+                          {selectedCompany.equipment && selectedCompany.equipment.length > 0 ? (
+                            <div className="space-y-3">
+                              {selectedCompany.equipment.map((equip) => (
+                                <div key={equip.id} className="border rounded-lg p-3">
+                                  <div className="font-medium text-gray-800 mb-1">
+                                    {equip.equipment_name}
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
+                                    {equip.model_name && (
+                                      <div>모델: {equip.model_name}</div>
+                                    )}
+                                    {equip.serial_number && (
+                                      <div>시리얼: {equip.serial_number}</div>
+                                    )}
+                                    {equip.purchase_date && (
+                                      <div>구매일: {formatDate(equip.purchase_date)}</div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-gray-500 text-center py-4">
+                              등록된 장비가 없습니다.
+                            </p>
+                          )}
                         </CardBody>
                       </Card>
                     </div>
@@ -529,13 +681,201 @@ export const Inspection = () => {
           </ModalContent>
         </Modal>
 
+        {/* 신규 업체 등록 모달 */}
+        <Modal 
+          isOpen={isCreateOpen} 
+          onOpenChange={onCreateOpenChange}
+          size="3xl"
+          scrollBehavior="inside"
+        >
+          <ModalContent>
+            {(onClose) => (
+              <>
+                <ModalHeader className="flex flex-col gap-1">
+                  <h2 className="text-xl font-bold">신규 업체 등록</h2>
+                </ModalHeader>
+                <ModalBody>
+                  <div className="space-y-6">
+                    {/* 기본 정보 섹션 */}
+                    <Card className="shadow-sm">
+                      <CardHeader>
+                        <h3 className="text-lg font-semibold">기본 정보</h3>
+                      </CardHeader>
+                      <CardBody>
+                        <div className="grid grid-cols-2 gap-4">
+                          <Input
+                            label="업체명"
+                            placeholder="업체명을 입력하세요"
+                            value={newCompany.name}
+                            onValueChange={(value) => setNewCompany(prev => ({ ...prev, name: value }))}
+                            isRequired
+                            variant="bordered"
+                          />
+                          <Input
+                            label="전화번호"
+                            placeholder="전화번호를 입력하세요"
+                            value={newCompany.phone}
+                            onValueChange={(value) => setNewCompany(prev => ({ ...prev, phone: value }))}
+                            isRequired
+                            variant="bordered"
+                          />
+                          <div className="col-span-2">
+                            <Textarea
+                              label="주소"
+                              placeholder="상세 주소를 입력하세요"
+                              value={newCompany.address}
+                              onValueChange={(value) => setNewCompany(prev => ({ ...prev, address: value }))}
+                              isRequired
+                              variant="bordered"
+                              minRows={2}
+                            />
+                          </div>
+                        </div>
+                      </CardBody>
+                    </Card>
+
+                    {/* 유지보수 기간 섹션 */}
+                    <Card className="shadow-sm">
+                      <CardHeader>
+                        <h3 className="text-lg font-semibold">유지보수 기간</h3>
+                      </CardHeader>
+                      <CardBody>
+                        <DateRangePicker 
+                          label="유지보수 기간" 
+                          className="max-w-full"
+                          variant="bordered"
+                          onChange={(value) => {
+                            if (value) {
+                              setNewCompany(prev => ({
+                                ...prev,
+                                maintenance_start_date: value.start.toString(),
+                                maintenance_end_date: value.end.toString()
+                              }));
+                            }
+                          }}
+                        />
+                      </CardBody>
+                    </Card>
+
+                    {/* 장비 정보 섹션 */}
+                    <Card className="shadow-sm">
+                      <CardHeader>
+                        <h3 className="text-lg font-semibold">장비 정보</h3>
+                      </CardHeader>
+                      <CardBody>
+                        {/* 장비 입력 폼 */}
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <Input
+                              label="장비명"
+                              placeholder="장비명을 입력하세요"
+                              value={newEquipment.equipment_name}
+                              onValueChange={(value) => setNewEquipment(prev => ({ ...prev, equipment_name: value }))}
+                              variant="bordered"
+                            />
+                            <Input
+                              label="모델명"
+                              placeholder="모델명을 입력하세요"
+                              value={newEquipment.model_name}
+                              onValueChange={(value) => setNewEquipment(prev => ({ ...prev, model_name: value }))}
+                              variant="bordered"
+                            />
+                            <Input
+                              label="시리얼 번호"
+                              placeholder="시리얼 번호를 입력하세요"
+                              value={newEquipment.serial_number}
+                              onValueChange={(value) => setNewEquipment(prev => ({ ...prev, serial_number: value }))}
+                              variant="bordered"
+                            />
+                            <Input
+                              label="구매일"
+                              type="date"
+                              placeholder="구매일을 선택하세요"
+                              value={newEquipment.purchase_date}
+                              onValueChange={(value) => setNewEquipment(prev => ({ ...prev, purchase_date: value }))}
+                              variant="bordered"
+                            />
+                          </div>
+                          
+                          <Button
+                            color="secondary"
+                            size="sm"
+                            startContent={<PlusIcon className="w-4 h-4" />}
+                            onPress={handleAddEquipment}
+                            className="w-full"
+                          >
+                            장비 추가
+                          </Button>
+                        </div>
+
+                        {/* 추가된 장비 목록 */}
+                        {newCompany.equipment.length > 0 && (
+                          <>
+                            <Divider className="my-4" />
+                            <div className="space-y-2">
+                              <p className="text-sm font-medium text-gray-600">추가된 장비 목록</p>
+                              {newCompany.equipment.map((equip, index) => (
+                                <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                                  <div className="flex-1">
+                                    <div className="font-medium">{equip.equipment_name}</div>
+                                    <div className="text-sm text-gray-600">
+                                      {equip.model_name && `모델: ${equip.model_name}`}
+                                      {equip.serial_number && ` | 시리얼: ${equip.serial_number}`}
+                                      {equip.purchase_date && ` | 구매일: ${formatDate(equip.purchase_date)}`}
+                                    </div>
+                                  </div>
+                                  <Button
+                                    isIconOnly
+                                    size="sm"
+                                    color="danger"
+                                    variant="light"
+                                    onPress={() => handleRemoveEquipment(index)}
+                                  >
+                                    <TrashIcon className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </CardBody>
+                    </Card>
+                  </div>
+                </ModalBody>
+                <ModalFooter>
+                  <Button 
+                    color="danger" 
+                    variant="light" 
+                    onPress={onClose}
+                    isDisabled={createLoading}
+                  >
+                    취소
+                  </Button>
+                  <Button 
+                    color="primary" 
+                    onPress={handleCreateCompany}
+                    isLoading={createLoading}
+                    isDisabled={
+                      !newCompany.name || 
+                      !newCompany.address || 
+                      !newCompany.phone
+                    }
+                  >
+                    등록
+                  </Button>
+                </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
+
         <Spacer y={8} />
 
         {/* 푸터 */}
         <Card className="bg-gradient-to-r from-gray-800 to-gray-900 text-white">
           <CardBody className="text-center py-6">
             <p className="text-gray-300">
-              업데이트는 CompanyData.ts, 전화번호, Chip요소는 랜덤값
+              PostgreSQL 데이터베이스와 연동된 실시간 데이터
             </p>
             <p className="text-sm text-gray-400 mt-2">
               총 {companies.length}개 업체 정보가 등록되어 있습니다

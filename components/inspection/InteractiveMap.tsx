@@ -6,7 +6,6 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import { Icon, LatLngTuple } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './leaflet-styles.css';
-import { Company } from '@/data/companyData';
 import { 
   Card, 
   CardBody, 
@@ -19,9 +18,30 @@ import {
   BuildingOffice2Icon,
   MapPinIcon,
   PhoneIcon,
-  EnvelopeIcon,
-  StarIcon
+  CalendarIcon
 } from '@heroicons/react/24/outline';
+
+// Types
+interface Equipment {
+  id: number;
+  company_id: number;
+  equipment_name: string;
+  model_name?: string;
+  serial_number?: string;
+  purchase_date?: string;
+}
+
+interface Company {
+  company_id: number;
+  name: string;
+  address: string;
+  phone: string;
+  city?: string;
+  maintenance_start_date?: string;
+  maintenance_end_date?: string;
+  status: "active" | "inactive" | "pending";
+  equipment: Equipment[];
+}
 
 // Leaflet 기본 아이콘 설정 (Next.js에서 필요)
 const createCustomIcon = (color: string) => {
@@ -38,18 +58,14 @@ const createCustomIcon = (color: string) => {
   });
 };
 
-// 카테고리별 색상 매핑
-const getCategoryColor = (category: string) => {
-  const colors: { [key: string]: string } = {
-    '교육기관': '#3B82F6', // blue
-    '의료기관': '#EF4444', // red
-    '공공기관': '#10B981', // green
-    '금융업': '#F59E0B', // amber
-    '제조업': '#8B5CF6', // purple
-    'IT/통신': '#06B6D4', // cyan
-    '기타': '#6B7280', // gray
-  };
-  return colors[category] || '#6B7280';
+// 상태별 색상 매핑
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case "active": return "#10B981"; // green
+    case "pending": return "#F59E0B"; // amber
+    case "inactive": return "#EF4444"; // red
+    default: return "#6B7280"; // gray
+  }
 };
 
 // 한국의 중심 좌표
@@ -81,10 +97,10 @@ const getCityCoordinates = (city: string): LatLngTuple => {
 
 // 주소를 기반으로 좌표 추정 (실제로는 geocoding API 사용 권장)
 const getCompanyCoordinates = (company: Company): LatLngTuple => {
-  const cityCoords = getCityCoordinates(company.city);
+  const cityCoords = getCityCoordinates(company.city || '기타');
   
   // 같은 도시 내에서 약간의 랜덤 오프셋 추가 (시각적 분산을 위해)
-  const hashCode = company.id.split('').reduce((a, b) => {
+  const hashCode = company.company_id.toString().split('').reduce((a, b) => {
     a = ((a << 5) - a) + b.charCodeAt(0);
     return a & a;
   }, 0);
@@ -95,20 +111,10 @@ const getCompanyCoordinates = (company: Company): LatLngTuple => {
   return [cityCoords[0] + offsetLat, cityCoords[1] + offsetLng];
 };
 
-interface ExtendedCompany extends Company {
-  phone?: string;
-  email?: string;
-  category?: string;
-  rating?: number;
-  status?: "active" | "inactive" | "pending";
-  employees?: number;
-  description?: string;
-}
-
 interface InteractiveMapProps {
-  companies: ExtendedCompany[];
-  selectedCompany: ExtendedCompany | null;
-  onCompanySelect: (company: ExtendedCompany) => void;
+  companies: Company[];
+  selectedCompany: Company | null;
+  onCompanySelect: (company: Company) => void;
   selectedCity?: string;
 }
 
@@ -139,7 +145,7 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
   const mapZoom = selectedCity ? 11 : 7;
 
-  const getStatusColor = (status: string) => {
+  const getStatusColorForChip = (status: string) => {
     switch (status) {
       case "active": return "success";
       case "pending": return "warning"; 
@@ -150,22 +156,16 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case "active": return "운영중";
-      case "pending": return "심사중";
-      case "inactive": return "중단";
+      case "active": return "유지보수 중";
+      case "pending": return "예정";
+      case "inactive": return "종료";
       default: return "알 수 없음";
     }
   };
 
-  const renderStars = (rating: number) => {
-    return Array.from({ length: 5 }, (_, i) => (
-      <StarIcon
-        key={i}
-        className={`w-3 h-3 ${
-          i < Math.floor(rating) ? "text-yellow-400 fill-current" : "text-gray-300"
-        }`}
-      />
-    ));
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString('ko-KR');
   };
 
   return (
@@ -189,11 +189,11 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
         {/* 업체 마커들 */}
         {companies.map((company) => {
           const position = getCompanyCoordinates(company);
-          const icon = createCustomIcon(getCategoryColor(company.category || '기타'));
+          const icon = createCustomIcon(getStatusColor(company.status));
           
           return (
             <Marker
-              key={company.id}
+              key={company.company_id}
               position={position}
               icon={icon}
               eventHandlers={{
@@ -210,9 +210,9 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
                       <Chip
                         size="sm"
                         variant="dot"
-                        color={getStatusColor(company.status || "")}
+                        color={getStatusColorForChip(company.status)}
                       >
-                        {getStatusText(company.status || "")}
+                        {getStatusText(company.status)}
                       </Chip>
                     </div>
                   </CardHeader>
@@ -223,28 +223,17 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
                         <span className="text-sm text-gray-700">{company.address}</span>
                       </div>
                       
-                      {company.phone && (
-                        <div className="flex items-center gap-2">
-                          <PhoneIcon className="w-4 h-4 text-blue-600" />
-                          <span className="text-sm text-gray-700">{company.phone}</span>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <PhoneIcon className="w-4 h-4 text-blue-600" />
+                        <span className="text-sm text-gray-700">{company.phone}</span>
+                      </div>
                       
-                      {company.category && (
+                      {company.maintenance_start_date && (
                         <div className="flex items-center gap-2">
-                          <BuildingOffice2Icon className="w-4 h-4 text-purple-600" />
-                          <Chip size="sm" variant="flat" color="secondary">
-                            {company.category}
-                          </Chip>
-                        </div>
-                      )}
-
-                      {company.rating && (
-                        <div className="flex items-center gap-2">
-                          <div className="flex">
-                            {renderStars(company.rating)}
-                          </div>
-                          <span className="text-sm font-medium">{company.rating.toFixed(1)}</span>
+                          <CalendarIcon className="w-4 h-4 text-purple-600" />
+                          <span className="text-sm text-gray-700">
+                            유지보수: {formatDate(company.maintenance_start_date)}
+                          </span>
                         </div>
                       )}
 
@@ -270,25 +259,21 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
       {/* 지도 범례 */}
       <Card className="absolute top-4 right-4 z-[1000] bg-white/95 backdrop-blur-sm">
         <CardHeader className="pb-2">
-          <h4 className="font-semibold text-sm">업종별 범례</h4>
+          <h4 className="font-semibold text-sm">상태별 범례</h4>
         </CardHeader>
         <CardBody className="pt-0">
           <div className="space-y-1">
             {Object.entries({
-              '교육기관': '#3B82F6',
-              '의료기관': '#EF4444',
-              '공공기관': '#10B981',
-              '금융업': '#F59E0B',
-              '제조업': '#8B5CF6',
-              'IT/통신': '#06B6D4',
-              '기타': '#6B7280',
-            }).map(([category, color]) => (
-              <div key={category} className="flex items-center gap-2">
+              '유지보수 중': '#10B981',
+              '예정': '#F59E0B',
+              '종료': '#EF4444',
+            }).map(([status, color]) => (
+              <div key={status} className="flex items-center gap-2">
                 <div 
                   className="w-3 h-3 rounded-full" 
                   style={{ backgroundColor: color }}
                 />
-                <span className="text-xs text-gray-700">{category}</span>
+                <span className="text-xs text-gray-700">{status}</span>
               </div>
             ))}
           </div>

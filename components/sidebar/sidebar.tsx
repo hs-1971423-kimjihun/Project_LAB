@@ -54,7 +54,7 @@ export const SidebarWrapper = () => {
               />
               <SidebarItem
                 isActive={pathname === "/inspection"}
-                title="Inspection list"
+                title="기업리스트"
                 icon={<PaymentsIcon />}
                 href="inspection"
               />
