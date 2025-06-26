@@ -24,7 +24,7 @@ import {
 // Types
 interface Equipment {
   id: number;
-  company_id: string;
+  company_id: number;
   equipment_name: string;
   model_name?: string;
   serial_number?: string;
@@ -32,7 +32,7 @@ interface Equipment {
 }
 
 interface Company {
-  company_id: string;
+  company_id: number;
   name: string;
   address: string;
   phone: string;
@@ -100,7 +100,7 @@ const getCompanyCoordinates = (company: Company): LatLngTuple => {
   const cityCoords = getCityCoordinates(company.city || '기타');
   
   // 같은 도시 내에서 약간의 랜덤 오프셋 추가 (시각적 분산을 위해)
-  const hashCode = company.company_id.split('').reduce((a, b) => {
+  const hashCode = company.company_id.toString().split('').reduce((a, b) => {
     a = ((a << 5) - a) + b.charCodeAt(0);
     return a & a;
   }, 0);

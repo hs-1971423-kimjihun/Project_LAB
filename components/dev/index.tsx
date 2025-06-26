@@ -28,7 +28,9 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
-  useDisclosure
+  useDisclosure,
+  DateRangePicker,
+  Textarea
 } from "@heroui/react";
 import { 
   MagnifyingGlassIcon,
@@ -39,8 +41,11 @@ import {
   CalendarIcon,
   EyeIcon,
   FunnelIcon,
-  XMarkIcon
+  XMarkIcon,
+  PlusIcon,
+  TrashIcon
 } from "@heroicons/react/24/outline";
+import {parseDate} from "@internationalized/date";
 
 // 지도 컴포넌트 import
 import InteractiveMap from "./InteractiveMap";
@@ -51,7 +56,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 // Types
 interface Equipment {
   id: number;
-  company_id: string;
+  company_id: number;
   equipment_name: string;
   model_name?: string;
   serial_number?: string;
@@ -59,7 +64,7 @@ interface Equipment {
 }
 
 interface Company {
-  company_id: string;
+  company_id: number;
   name: string;
   address: string;
   phone: string;
@@ -68,6 +73,23 @@ interface Company {
   maintenance_end_date?: string;
   status: "active" | "inactive" | "pending";
   equipment: Equipment[];
+}
+
+// 신규 등록을 위한 타입
+interface EquipmentCreate {
+  equipment_name: string;
+  model_name?: string;
+  serial_number?: string;
+  purchase_date?: string;
+}
+
+interface CompanyCreate {
+  name: string;
+  address: string;
+  phone: string;
+  maintenance_start_date?: string;
+  maintenance_end_date?: string;
+  equipment: EquipmentCreate[];
 }
 
 export const Dev = () => {
@@ -81,6 +103,28 @@ export const Dev = () => {
   const [cities, setCities] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  
+  // 신규등록 모달 관련 상태
+  const { 
+    isOpen: isCreateOpen, 
+    onOpen: onCreateOpen, 
+    onOpenChange: onCreateOpenChange 
+  } = useDisclosure();
+  const [createLoading, setCreateLoading] = useState(false);
+  const [newCompany, setNewCompany] = useState<CompanyCreate>({
+    name: '',
+    address: '',
+    phone: '',
+    maintenance_start_date: undefined,
+    maintenance_end_date: undefined,
+    equipment: []
+  });
+  const [newEquipment, setNewEquipment] = useState<EquipmentCreate>({
+    equipment_name: '',
+    model_name: '',
+    serial_number: '',
+    purchase_date: undefined
+  });
 
   // API에서 데이터 가져오기
   useEffect(() => {
@@ -169,6 +213,78 @@ export const Dev = () => {
   const formatDate = (dateString?: string) => {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString('ko-KR');
+  };
+
+  // 신규 회사 등록
+  const handleCreateCompany = async () => {
+    try {
+      setCreateLoading(true);
+      
+      const response = await fetch(`${API_BASE_URL}/api/companies`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newCompany),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to create company');
+      }
+      
+      const createdCompany = await response.json();
+      
+      // 목록 새로고침
+      const updatedCompaniesResponse = await fetch(`${API_BASE_URL}/api/companies`);
+      const updatedCompanies = await updatedCompaniesResponse.json();
+      setCompanies(updatedCompanies);
+      
+      // 상태 초기화
+      setNewCompany({
+        name: '',
+        address: '',
+        phone: '',
+        maintenance_start_date: undefined,
+        maintenance_end_date: undefined,
+        equipment: []
+      });
+      
+      onCreateOpenChange();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '등록 중 오류가 발생했습니다.');
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
+  // 장비 추가
+  const handleAddEquipment = () => {
+    if (!newEquipment.equipment_name) {
+      alert('장비명을 입력해주세요.');
+      return;
+    }
+    
+    setNewCompany(prev => ({
+      ...prev,
+      equipment: [...prev.equipment, { ...newEquipment }]
+    }));
+    
+    // 장비 입력 폼 초기화
+    setNewEquipment({
+      equipment_name: '',
+      model_name: '',
+      serial_number: '',
+      purchase_date: undefined
+    });
+  };
+
+  // 장비 삭제
+  const handleRemoveEquipment = (index: number) => {
+    setNewCompany(prev => ({
+      ...prev,
+      equipment: prev.equipment.filter((_, i) => i !== index)
+    }));
   };
 
   if (dataLoading) {
@@ -312,16 +428,29 @@ export const Dev = () => {
           <Card className="shadow-lg">
             <CardHeader className="border-b border-gray-200">
               <div className="flex justify-between items-center w-full">
-                <h2 className="text-xl font-semibold text-gray-800">
-                  업체 목록
-                </h2>
-                <Badge 
-                  content={filteredCompanies.length} 
-                  color="primary" 
-                  size="lg"
-                >
-                  <div className="w-8 h-8" />
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-semibold text-gray-800">
+                    업체 목록
+                  </h2>
+                  <Badge 
+                    content={filteredCompanies.length} 
+                    color="primary" 
+                    size="lg"
+                  >
+                    <div className="w-3 h-8" />
+                  </Badge>
+                </div>
+
+                <div className="flex items-center">
+                  <Button
+                    color="primary"
+                    size="sm"
+                    startContent={<PlusIcon className="w-4 h-4" />}
+                    onPress={onCreateOpen}
+                  >
+                    신규등록
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardBody className="p-0">
@@ -545,6 +674,194 @@ export const Dev = () => {
                   </Button>
                   <Button color="primary" onPress={onClose}>
                     연락하기
+                  </Button>
+                </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
+
+        {/* 신규 업체 등록 모달 */}
+        <Modal 
+          isOpen={isCreateOpen} 
+          onOpenChange={onCreateOpenChange}
+          size="3xl"
+          scrollBehavior="inside"
+        >
+          <ModalContent>
+            {(onClose) => (
+              <>
+                <ModalHeader className="flex flex-col gap-1">
+                  <h2 className="text-xl font-bold">신규 업체 등록</h2>
+                </ModalHeader>
+                <ModalBody>
+                  <div className="space-y-6">
+                    {/* 기본 정보 섹션 */}
+                    <Card className="shadow-sm">
+                      <CardHeader>
+                        <h3 className="text-lg font-semibold">기본 정보</h3>
+                      </CardHeader>
+                      <CardBody>
+                        <div className="grid grid-cols-2 gap-4">
+                          <Input
+                            label="업체명"
+                            placeholder="업체명을 입력하세요"
+                            value={newCompany.name}
+                            onValueChange={(value) => setNewCompany(prev => ({ ...prev, name: value }))}
+                            isRequired
+                            variant="bordered"
+                          />
+                          <Input
+                            label="전화번호"
+                            placeholder="전화번호를 입력하세요"
+                            value={newCompany.phone}
+                            onValueChange={(value) => setNewCompany(prev => ({ ...prev, phone: value }))}
+                            isRequired
+                            variant="bordered"
+                          />
+                          <div className="col-span-2">
+                            <Textarea
+                              label="주소"
+                              placeholder="상세 주소를 입력하세요"
+                              value={newCompany.address}
+                              onValueChange={(value) => setNewCompany(prev => ({ ...prev, address: value }))}
+                              isRequired
+                              variant="bordered"
+                              minRows={2}
+                            />
+                          </div>
+                        </div>
+                      </CardBody>
+                    </Card>
+
+                    {/* 유지보수 기간 섹션 */}
+                    <Card className="shadow-sm">
+                      <CardHeader>
+                        <h3 className="text-lg font-semibold">유지보수 기간</h3>
+                      </CardHeader>
+                      <CardBody>
+                        <DateRangePicker 
+                          label="유지보수 기간" 
+                          className="max-w-full"
+                          variant="bordered"
+                          onChange={(value) => {
+                            if (value) {
+                              setNewCompany(prev => ({
+                                ...prev,
+                                maintenance_start_date: value.start.toString(),
+                                maintenance_end_date: value.end.toString()
+                              }));
+                            }
+                          }}
+                        />
+                      </CardBody>
+                    </Card>
+
+                    {/* 장비 정보 섹션 */}
+                    <Card className="shadow-sm">
+                      <CardHeader>
+                        <h3 className="text-lg font-semibold">장비 정보</h3>
+                      </CardHeader>
+                      <CardBody>
+                        {/* 장비 입력 폼 */}
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <Input
+                              label="장비명"
+                              placeholder="장비명을 입력하세요"
+                              value={newEquipment.equipment_name}
+                              onValueChange={(value) => setNewEquipment(prev => ({ ...prev, equipment_name: value }))}
+                              variant="bordered"
+                            />
+                            <Input
+                              label="모델명"
+                              placeholder="모델명을 입력하세요"
+                              value={newEquipment.model_name}
+                              onValueChange={(value) => setNewEquipment(prev => ({ ...prev, model_name: value }))}
+                              variant="bordered"
+                            />
+                            <Input
+                              label="시리얼 번호"
+                              placeholder="시리얼 번호를 입력하세요"
+                              value={newEquipment.serial_number}
+                              onValueChange={(value) => setNewEquipment(prev => ({ ...prev, serial_number: value }))}
+                              variant="bordered"
+                            />
+                            <Input
+                              label="구매일"
+                              type="date"
+                              placeholder="구매일을 선택하세요"
+                              value={newEquipment.purchase_date}
+                              onValueChange={(value) => setNewEquipment(prev => ({ ...prev, purchase_date: value }))}
+                              variant="bordered"
+                            />
+                          </div>
+                          
+                          <Button
+                            color="secondary"
+                            size="sm"
+                            startContent={<PlusIcon className="w-4 h-4" />}
+                            onPress={handleAddEquipment}
+                            className="w-full"
+                          >
+                            장비 추가
+                          </Button>
+                        </div>
+
+                        {/* 추가된 장비 목록 */}
+                        {newCompany.equipment.length > 0 && (
+                          <>
+                            <Divider className="my-4" />
+                            <div className="space-y-2">
+                              <p className="text-sm font-medium text-gray-600">추가된 장비 목록</p>
+                              {newCompany.equipment.map((equip, index) => (
+                                <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                                  <div className="flex-1">
+                                    <div className="font-medium">{equip.equipment_name}</div>
+                                    <div className="text-sm text-gray-600">
+                                      {equip.model_name && `모델: ${equip.model_name}`}
+                                      {equip.serial_number && ` | 시리얼: ${equip.serial_number}`}
+                                      {equip.purchase_date && ` | 구매일: ${formatDate(equip.purchase_date)}`}
+                                    </div>
+                                  </div>
+                                  <Button
+                                    isIconOnly
+                                    size="sm"
+                                    color="danger"
+                                    variant="light"
+                                    onPress={() => handleRemoveEquipment(index)}
+                                  >
+                                    <TrashIcon className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </CardBody>
+                    </Card>
+                  </div>
+                </ModalBody>
+                <ModalFooter>
+                  <Button 
+                    color="danger" 
+                    variant="light" 
+                    onPress={onClose}
+                    isDisabled={createLoading}
+                  >
+                    취소
+                  </Button>
+                  <Button 
+                    color="primary" 
+                    onPress={handleCreateCompany}
+                    isLoading={createLoading}
+                    isDisabled={
+                      !newCompany.name || 
+                      !newCompany.address || 
+                      !newCompany.phone
+                    }
+                  >
+                    등록
                   </Button>
                 </ModalFooter>
               </>

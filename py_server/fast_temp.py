@@ -26,14 +26,20 @@ DB_CONFIG = {
 # --- Pydantic Models ---
 class Equipment(BaseModel):
     id: int
-    company_id: str
+    company_id: int  
     equipment_name: str
     model_name: Optional[str]
     serial_number: Optional[str]
     purchase_date: Optional[date]
 
+class EquipmentCreate(BaseModel):
+    equipment_name: str
+    model_name: Optional[str] = None
+    serial_number: Optional[str] = None
+    purchase_date: Optional[date] = None
+
 class Company(BaseModel):
-    company_id: str
+    company_id: int  
     name: str
     address: str
     phone: str
@@ -42,6 +48,14 @@ class Company(BaseModel):
     maintenance_end_date: Optional[date] = None
     status: str  # "active", "inactive", "pending"
     equipment: List[Equipment] = []
+
+class CompanyCreate(BaseModel):
+    name: str
+    address: str
+    phone: str
+    maintenance_start_date: Optional[date] = None
+    maintenance_end_date: Optional[date] = None
+    equipment: List[EquipmentCreate] = []
 
 # --- Database Pool ---
 db_pool = None
@@ -293,6 +307,87 @@ async def get_cities():
             
             return sorted(list(cities))
             
+    except Exception as e:
+        logger.error(f"Database error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@app.post("/api/companies", response_model=Company)
+async def create_company(company_data: CompanyCreate):
+    """새로운 회사와 장비 정보를 생성합니다."""
+    try:
+        async with db_pool.acquire() as connection:
+            # 트랜잭션 시작
+            async with connection.transaction():
+                # 1. 회사 정보 삽입
+                company_query = """
+                    INSERT INTO companies (name, address, phone, 
+                                         maintenance_start_date, maintenance_end_date)
+                    VALUES ($1, $2, $3, $4, $5)
+                    RETURNING company_id, name, address, phone, 
+                              maintenance_start_date, maintenance_end_date
+                """
+                company_row = await connection.fetchrow(
+                    company_query,
+                    company_data.name,
+                    company_data.address,
+                    company_data.phone,
+                    company_data.maintenance_start_date,
+                    company_data.maintenance_end_date
+                )
+                # 자동 생성된 company_id 가져오기
+                generated_company_id = company_row['company_id']
+                
+                # 2. 장비 정보 삽입
+                equipment_list = []
+                # 2. 장비 정보 삽입 시 생성된 ID 사용
+                for equip in company_data.equipment:
+                    equipment_query = """
+                        INSERT INTO equipment (company_id, equipment_name, model_name, 
+                                             serial_number, purchase_date)
+                        VALUES ($1, $2, $3, $4, $5)
+                        RETURNING id, company_id, equipment_name, model_name, 
+                                  serial_number, purchase_date
+                    """
+                    equipment_row = await connection.fetchrow(
+                        equipment_query,
+                        generated_company_id,  # 생성된 ID 사용
+                        equip.equipment_name,
+                        equip.model_name,
+                        equip.serial_number,
+                        equip.purchase_date
+                    )
+                    
+                    equipment_list.append(Equipment(
+                        id=equipment_row['id'],
+                        company_id=equipment_row['company_id'],
+                        equipment_name=equipment_row['equipment_name'],
+                        model_name=equipment_row['model_name'],
+                        serial_number=equipment_row['serial_number'],
+                        purchase_date=equipment_row['purchase_date']
+                    ))
+                
+                # 3. 응답 데이터 구성
+                status = calculate_status(
+                    company_row['maintenance_start_date'],
+                    company_row['maintenance_end_date']
+                )
+                
+                company = Company(
+                    company_id=company_row['company_id'],
+                    name=company_row['name'],
+                    address=company_row['address'],
+                    phone=company_row['phone'],
+                    city=extract_city_from_address(company_row['address']),
+                    maintenance_start_date=company_row['maintenance_start_date'],
+                    maintenance_end_date=company_row['maintenance_end_date'],
+                    status=status,
+                    equipment=equipment_list
+                )
+                
+                return company
+                
+    except asyncpg.UniqueViolationError:
+        raise HTTPException(status_code=400, detail="Company ID already exists")
     except Exception as e:
         logger.error(f"Database error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
