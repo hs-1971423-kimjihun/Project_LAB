@@ -76,6 +76,12 @@ export const SidebarWrapper = () => {
                 href="zoning"
               />
               <SidebarItem
+                isActive={pathname === "/dev"}
+                title="Dev"
+                icon={<ProductsIcon />}
+                href="dev"
+              />
+              <SidebarItem
                 isActive={pathname === "/report"}
                 title={
                       <div className="flex items-center gap-2">
