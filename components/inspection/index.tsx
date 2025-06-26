@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
+import {parseDate} from "@internationalized/date";
 import {
   Button,
   Card,
@@ -45,7 +46,7 @@ import {
   PlusIcon,
   TrashIcon
 } from "@heroicons/react/24/outline";
-import {parseDate} from "@internationalized/date";
+import { useRouter } from "next/navigation";
 
 // 지도 컴포넌트 import
 import InteractiveMap from "./InteractiveMap";
@@ -93,6 +94,7 @@ interface CompanyCreate {
 }
 
 export const Inspection = () => {
+  const router = useRouter();
   const [selectedCity, setSelectedCity] = useState<string>("");
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -102,7 +104,6 @@ export const Inspection = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [cities, setCities] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const { isOpen, onOpen, onOpenChange } = useDisclosure();
   
   // 신규등록 모달 관련 상태
   const { 
@@ -112,6 +113,7 @@ export const Inspection = () => {
   } = useDisclosure();
   const [createLoading, setCreateLoading] = useState(false);
   const [newCompany, setNewCompany] = useState<CompanyCreate>({
+    // company_id: '',
     name: '',
     address: '',
     phone: '',
@@ -167,8 +169,8 @@ export const Inspection = () => {
   };
 
   const handleCompanySelect = (company: Company) => {
-    setSelectedCompany(company);
-    onOpen(); // 모달 열기
+    // 동적 라우팅으로 상세 페이지로 이동
+    router.push(`/companies/${company.company_id}`);
   };
 
   const filteredCompanies = useMemo(() => {
@@ -428,6 +430,7 @@ export const Inspection = () => {
           <Card className="shadow-lg">
             <CardHeader className="border-b border-gray-200">
               <div className="flex justify-between items-center w-full">
+                {/* '업체 목록'과 Badge를 그룹으로 묶습니다. */}
                 <div className="flex items-center gap-2">
                   <h2 className="text-xl font-semibold text-gray-800">
                     업체 목록
@@ -437,10 +440,12 @@ export const Inspection = () => {
                     color="primary" 
                     size="lg"
                   >
+                    {/* Badge 라이브러리에 따라 이 div가 필요 없을 수도 있습니다. */}
                     <div className="w-3 h-8" />
                   </Badge>
                 </div>
 
+                {/* 버튼은 오른쪽에 위치하게 됩니다. */}
                 <div className="flex items-center">
                   <Button
                     color="primary"
@@ -561,125 +566,7 @@ export const Inspection = () => {
           </Card>
         </div>
 
-        {/* 업체 상세 정보 모달 */}
-        <Modal 
-          isOpen={isOpen} 
-          onOpenChange={onOpenChange}
-          size="2xl"
-          scrollBehavior="inside"
-        >
-          <ModalContent>
-            {(onClose) => (
-              <>
-                <ModalHeader className="flex flex-col gap-1">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-bold">업체 상세 정보</h2>
-                    <Chip
-                      variant="dot"
-                      color={getStatusColor(selectedCompany?.status || "")}
-                    >
-                      {getStatusText(selectedCompany?.status || "")}
-                    </Chip>
-                  </div>
-                </ModalHeader>
-                <ModalBody>
-                  {selectedCompany && (
-                    <div className="space-y-6">
-                      {/* 기본 정보 */}
-                      <Card className="shadow-sm">
-                        <CardHeader>
-                          <h3 className="text-lg font-semibold">기본 정보</h3>
-                        </CardHeader>
-                        <CardBody>
-                          <div className="space-y-3">
-                            <div className="flex items-center gap-3">
-                              <BuildingOffice2Icon className="w-5 h-5 text-blue-600" />
-                              <span className="font-medium">{selectedCompany.name}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <MapPinIcon className="w-5 h-5 text-green-600" />
-                              <span>{selectedCompany.address}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <PhoneIcon className="w-5 h-5 text-orange-600" />
-                              <span>{selectedCompany.phone}</span>
-                            </div>
-                          </div>
-                        </CardBody>
-                      </Card>
-
-                      {/* 유지보수 정보 */}
-                      <Card className="shadow-sm">
-                        <CardHeader>
-                          <h3 className="text-lg font-semibold">유지보수 정보</h3>
-                        </CardHeader>
-                        <CardBody>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <p className="text-sm text-gray-600 mb-1">시작일</p>
-                              <p className="font-medium">
-                                {formatDate(selectedCompany.maintenance_start_date)}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-sm text-gray-600 mb-1">종료일</p>
-                              <p className="font-medium">
-                                {formatDate(selectedCompany.maintenance_end_date)}
-                              </p>
-                            </div>
-                          </div>
-                        </CardBody>
-                      </Card>
-
-                      {/* 관리 장비 */}
-                      <Card className="shadow-sm">
-                        <CardHeader>
-                          <h3 className="text-lg font-semibold">관리 장비</h3>
-                        </CardHeader>
-                        <CardBody>
-                          {selectedCompany.equipment && selectedCompany.equipment.length > 0 ? (
-                            <div className="space-y-3">
-                              {selectedCompany.equipment.map((equip) => (
-                                <div key={equip.id} className="border rounded-lg p-3">
-                                  <div className="font-medium text-gray-800 mb-1">
-                                    {equip.equipment_name}
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
-                                    {equip.model_name && (
-                                      <div>모델: {equip.model_name}</div>
-                                    )}
-                                    {equip.serial_number && (
-                                      <div>시리얼: {equip.serial_number}</div>
-                                    )}
-                                    {equip.purchase_date && (
-                                      <div>구매일: {formatDate(equip.purchase_date)}</div>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-gray-500 text-center py-4">
-                              등록된 장비가 없습니다.
-                            </p>
-                          )}
-                        </CardBody>
-                      </Card>
-                    </div>
-                  )}
-                </ModalBody>
-                <ModalFooter>
-                  <Button color="danger" variant="light" onPress={onClose}>
-                    닫기
-                  </Button>
-                  <Button color="primary" onPress={onClose}>
-                    연락하기
-                  </Button>
-                </ModalFooter>
-              </>
-            )}
-          </ModalContent>
-        </Modal>
+       
 
         {/* 신규 업체 등록 모달 */}
         <Modal 
@@ -871,17 +758,6 @@ export const Inspection = () => {
 
         <Spacer y={8} />
 
-        {/* 푸터 */}
-        <Card className="bg-gradient-to-r from-gray-800 to-gray-900 text-white">
-          <CardBody className="text-center py-6">
-            <p className="text-gray-300">
-              PostgreSQL 데이터베이스와 연동된 실시간 데이터
-            </p>
-            <p className="text-sm text-gray-400 mt-2">
-              총 {companies.length}개 업체 정보가 등록되어 있습니다
-            </p>
-          </CardBody>
-        </Card>
       </div>
     </div>
   );

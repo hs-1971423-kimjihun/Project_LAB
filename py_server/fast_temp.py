@@ -223,7 +223,7 @@ async def get_companies():
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @app.get("/api/companies/{company_id}", response_model=Company)
-async def get_company(company_id: str):
+async def get_company(company_id: int):
     """특정 회사의 상세 정보를 가져옵니다."""
     try:
         async with db_pool.acquire() as connection:
